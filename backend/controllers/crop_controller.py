@@ -2,17 +2,22 @@ from services.crop_service import predict_crop
 from services.weather_service import get_weather
 import logging
 from flask import g
+from utils.validation import validate_crop_input
 
 logger = logging.getLogger(__name__)
 
 def get_crop(data):
-    # ✅ Basic validation
-    city = data.get("location")
-    if not city:
+
+    # 🔥 VALIDATION (must be FIRST)
+    errors = validate_crop_input(data)
+    if errors:
         return {
             "success": False,
-            "message": "Location is required"
+            "errors": errors
         }
+
+    # ✅ Basic validation
+    city = data.get("location")
 
     # 🌦 Get weather
     weather = get_weather(city)
@@ -47,7 +52,7 @@ def get_crop(data):
         "rainfall": weather.get("humidity", 50) * 3
     }
 
-    # 🔥 Structured logging
+    # 🔥 Logging
     logger.info(
         "ML input prepared",
         extra={
