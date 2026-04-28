@@ -2,41 +2,50 @@ import joblib
 import pandas as pd
 import os
 
-# ✅ Load model once (best practice)
-model_path = os.path.join(os.path.dirname(__file__), "../models/crop_model.pkl")
-model = joblib.load(model_path)
+# Absolute safe path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "../models/crop_model.pkl")
+
+# Load model once
+try:
+    model = joblib.load(MODEL_PATH)
+    print("✅ Model loaded successfully")
+except Exception as e:
+    print("❌ Model loading failed:", e)
+    model = None
+
 
 def predict_crop(data):
-    # ✅ Create input dataframe
-    input_df = pd.DataFrame([{
-        "N": data["N"],
-        "P": data["P"],
-        "K": data["K"],
-        "temperature": data["temperature"],
-        "humidity": data["humidity"],
-        "ph": data["ph"],
-        "rainfall": data["rainfall"]
-    }])
+    if model is None:
+        return "Model not loaded"
 
-    # 🔍 Debug (good for now)
-    print("📥 Model Input:")
-    print(input_df)
+    try:
+        input_df = pd.DataFrame([{
+            "N": data.get("N", 0),
+            "P": data.get("P", 0),
+            "K": data.get("K", 0),
+            "temperature": data.get("temperature", 0),
+            "humidity": data.get("humidity", 0),
+            "ph": data.get("ph", 7),
+            "rainfall": data.get("rainfall", 0)
+        }])
 
-    # ✅ Get probabilities
-    probabilities = model.predict_proba(input_df)[0]
-    classes = model.classes_
+        # 🔥 Get probabilities
+        probs = model.predict_proba(input_df)[0]
+        crops = model.classes_
 
-    # ✅ Combine + sort
-    results = list(zip(classes, probabilities))
-    results = sorted(results, key=lambda x: x[1], reverse=True)
+        # 🔥 Top 3 crops
+        top_indices = probs.argsort()[-3:][::-1]
 
-    # 🔍 Debug top predictions
-    print("📊 Top Predictions:", results[:3])
+        top_3 = []
+        for i in top_indices:
+            top_3.append({
+                "crop": crops[i],
+                "confidence": round(float(probs[i]), 3)
+            })
 
-    # ✅ Return top 3 crops
-    top3 = [
-        {"crop": crop, "confidence": round(prob * 100, 2)}
-        for crop, prob in results[:3]
-    ]
+        return top_3
 
-    return top3
+    except Exception as e:
+        print("❌ Prediction error:", e)
+        return "Prediction error"
