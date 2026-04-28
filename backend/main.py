@@ -1,10 +1,16 @@
+import logging
+
 from flask import Flask
+from logging_config import configure_logging
 from routes.user_routes import user_bp
 from routes.farm_routes import farm_bp
 from routes.weather_routes import weather_bp
 from routes.crop_routes import crop_bp
 from routes.fertilizer_routes import fertilizer_bp
 
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -19,5 +25,8 @@ def home():
     return {"msg": "Backend running 🚀"}
 
 if __name__ == "__main__":
-    print("🚀 Backend running...")
+    logger.info(
+        "Backend running",
+        extra={"event": "app_startup", "status_code": 200}
+    )
     app.run(debug=True, port=5001)
