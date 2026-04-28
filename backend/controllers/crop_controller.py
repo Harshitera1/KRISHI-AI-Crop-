@@ -1,9 +1,13 @@
 from services.crop_service import predict_crop
 from services.weather_service import get_weather
+import logging
+from flask import g
+
+logger = logging.getLogger(__name__)
 
 def get_crop(data):
+    # ✅ Basic validation
     city = data.get("location")
-
     if not city:
         return {
             "success": False,
@@ -13,7 +17,16 @@ def get_crop(data):
     # 🌦 Get weather
     weather = get_weather(city)
 
-    if not weather["success"]:
+    if not weather.get("success"):
+        logger.error(
+            "Weather fetch failed",
+            extra={
+                "event": "weather_error",
+                "request_id": g.get("request_id"),
+                "city": city,
+                "response": weather
+            }
+        )
         return weather
 
     # ✅ Soil mapping
@@ -34,19 +47,35 @@ def get_crop(data):
         "rainfall": weather.get("humidity", 50) * 3
     }
 
-    print("🚀 Final ML Input:", ml_input)
+    # 🔥 Structured logging
+    logger.info(
+        "ML input prepared",
+        extra={
+            "event": "ml_input",
+            "request_id": g.get("request_id"),
+            "data": ml_input
+        }
+    )
 
-    # 🔥 Get prediction
+    # 🔥 Prediction
     result = predict_crop(ml_input)
 
-    # ❌ Handle errors FIRST
-    if result in ["Model not loaded", "Prediction error"]:
+    # ❌ Handle ML errors
+    if not isinstance(result, list):
+        logger.error(
+            "ML prediction failed",
+            extra={
+                "event": "ml_error",
+                "request_id": g.get("request_id"),
+                "message": result
+            }
+        )
         return {
             "success": False,
             "message": result
         }
 
-    # ✅ Success response
+    # ✅ Success
     return {
         "success": True,
         "recommended_crop": result[0]["crop"],

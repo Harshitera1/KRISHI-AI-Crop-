@@ -2,6 +2,8 @@ import logging
 import time
 import uuid
 
+
+from flask import jsonify
 from flask import Flask, g, request
 from logging_config import configure_logging
 from routes.user_routes import user_bp
@@ -65,3 +67,19 @@ if __name__ == "__main__":
         extra={"event": "app_startup", "status_code": 200}
     )
     app.run(debug=True, port=5001)
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(
+        "Unhandled exception",
+        extra={
+            "event": "error",
+            "request_id": getattr(g, "request_id", None),
+            "error": str(e)
+        }
+    )
+
+    return jsonify({
+        "success": False,
+        "message": "Internal server error",
+        "request_id": getattr(g, "request_id", None)
+    }), 500
