@@ -1,7 +1,9 @@
 from flask import request, jsonify, g
 from auth.jwt_handler import verify_token
+from functools import wraps
 
 def token_required(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         auth_header = request.headers.get("Authorization")
 

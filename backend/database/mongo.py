@@ -21,6 +21,7 @@ try:
     # Collections
     users_collection = db["users"]
     history_collection = db["history"]
+    soil_collection = db["soil_data"]
 
     print("✅ MongoDB Atlas connected successfully")
 
@@ -29,3 +30,4 @@ except Exception as e:
 
     users_collection = None
     history_collection = None
+    soil_collection = None

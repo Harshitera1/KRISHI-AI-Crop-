@@ -3,5 +3,14 @@ pymongo
 python-dotenv
 werkzeug
 pyjwt
+bcrypt
+flask-bcrypt
 streamlit
+requests
+SpeechRecognition
+gtts
+joblib
+pandas
+scikit-learn
+python-dotenv
 requests

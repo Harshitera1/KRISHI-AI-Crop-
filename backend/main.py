@@ -11,9 +11,11 @@ from routes.weather_routes import weather_bp
 from routes.crop_routes import crop_bp
 from routes.fertilizer_routes import fertilizer_bp
 from routes.auth_routes import auth_bp
+from routes.soil_routes import soil_bp
 
 from auth.auth_service import bcrypt
 from routes.history_routes import history_bp
+from models.soil_model import initialize_soil_data
 
 
 # 🔥 Setup logging
@@ -34,6 +36,13 @@ app.register_blueprint(crop_bp, url_prefix="/api/crop")
 app.register_blueprint(fertilizer_bp, url_prefix="/api/fertilizer")
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(history_bp, url_prefix="/api/history")
+app.register_blueprint(soil_bp, url_prefix="/api/soil")
+
+# 🔥 Initialize soil data on startup
+try:
+    initialize_soil_data()
+except Exception as e:
+    logger.warning(f"Soil data initialization: {str(e)}")
 
 
 # 🔥 Request logging
