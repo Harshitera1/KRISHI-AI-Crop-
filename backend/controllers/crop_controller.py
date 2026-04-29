@@ -3,12 +3,13 @@ from services.weather_service import get_weather
 import logging
 from flask import g
 from utils.validation import validate_crop_input
+from database.mongo import history_collection
 
 logger = logging.getLogger(__name__)
 
 def get_crop(data):
 
-    # 🔥 VALIDATION (must be FIRST)
+    # 🔥 VALIDATION
     errors = validate_crop_input(data)
     if errors:
         return {
@@ -16,10 +17,9 @@ def get_crop(data):
             "errors": errors
         }
 
-    # ✅ Basic validation
     city = data.get("location")
 
-    # 🌦 Get weather
+    # 🌦 WEATHER
     weather = get_weather(city)
 
     if not weather.get("success"):
@@ -34,14 +34,14 @@ def get_crop(data):
         )
         return weather
 
-    # ✅ Soil mapping
+    # 🌱 SOIL
     soil_map = {
         "Loamy": 6.5,
         "Sandy": 5.5,
         "Clay": 7.5
     }
 
-    # ✅ ML input
+    # 📊 ML INPUT
     ml_input = {
         "N": data.get("N", 90),
         "P": data.get("P", 40),
@@ -52,7 +52,6 @@ def get_crop(data):
         "rainfall": weather.get("humidity", 50) * 3
     }
 
-    # 🔥 Logging
     logger.info(
         "ML input prepared",
         extra={
@@ -62,10 +61,9 @@ def get_crop(data):
         }
     )
 
-    # 🔥 Prediction
+    # 🤖 PREDICT
     result = predict_crop(ml_input)
 
-    # ❌ Handle ML errors
     if not isinstance(result, list):
         logger.error(
             "ML prediction failed",
@@ -80,7 +78,37 @@ def get_crop(data):
             "message": result
         }
 
-    # ✅ Success
+    # 💾 SAVE HISTORY (FIXED)
+    try:
+        if history_collection is not None:
+            history_collection.insert_one({
+                "user": g.get("user"),
+                "input": data,
+                "result": [
+                    {
+                        "crop": str(item["crop"]),
+                        "confidence": float(item["confidence"])
+                    }
+                    for item in result
+                ],
+                "weather": {
+                    "temperature": float(weather.get("temperature", 0)),
+                    "humidity": float(weather.get("humidity", 0)),
+                    "city": weather.get("city"),
+                    "condition": weather.get("condition")
+                }
+            })
+    except Exception as e:
+        logger.error(
+            "History save failed",
+            extra={
+                "event": "history_error",
+                "request_id": g.get("request_id"),
+                "error": str(e)
+            }
+        )
+
+    # ✅ FINAL RESPONSE
     return {
         "success": True,
         "recommended_crop": result[0]["crop"],

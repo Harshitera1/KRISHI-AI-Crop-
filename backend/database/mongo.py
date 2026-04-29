@@ -9,7 +9,23 @@ MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
     raise Exception("MONGO_URI not found in .env")
 
-client = MongoClient(MONGO_URI)
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
 
-# Database
-db = client["krishi_db"]
+    # 🔥 Force connection check
+    client.server_info()
+
+    # Database
+    db = client["krishi_db"]
+
+    # Collections
+    users_collection = db["users"]
+    history_collection = db["history"]
+
+    print("✅ MongoDB Atlas connected successfully")
+
+except Exception as e:
+    print("❌ MongoDB connection failed:", e)
+
+    users_collection = None
+    history_collection = None
