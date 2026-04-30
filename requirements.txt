@@ -6,6 +6,9 @@ pyjwt
 bcrypt
 flask-bcrypt
 streamlit
+streamlit-folium
+folium
+geopy
 requests
 SpeechRecognition
 gtts
@@ -14,3 +17,5 @@ pandas
 scikit-learn
 python-dotenv
 requests
+babel
+plotly

@@ -1,6 +1,7 @@
 from services.crop_service import predict_crop
 from services.weather_service import get_weather
 from services.soil_service import fetch_soil_data
+from services.fertilizer_service import recommend_fertilizer
 from models.soil_model import get_soil_data
 import logging
 from flask import g
@@ -10,8 +11,7 @@ from database.mongo import history_collection
 logger = logging.getLogger(__name__)
 
 def get_crop(data):
-
-    # 🔥 VALIDATION
+    # VALIDATION
     errors = validate_crop_input(data)
     if errors:
         return {
@@ -19,10 +19,23 @@ def get_crop(data):
             "errors": errors
         }
 
-    city = data.get("location")
+    city = data.get("location", "Unknown")
     soil_type = data.get("soil", "Loamy")
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    
+    logger.info(
+        "Crop recommendation request received",
+        extra={
+            "event": "crop_request",
+            "city": city,
+            "latitude": latitude,
+            "longitude": longitude,
+            "soil_type": soil_type
+        }
+    )
 
-    # 🌦 WEATHER
+    # GET WEATHER
     weather = get_weather(city)
 
     if not weather.get("success"):
@@ -37,7 +50,7 @@ def get_crop(data):
         )
         return weather
 
-    # 🌱 SOIL MAP & SUITABLE CROPS
+    # SOIL MAP
     soil_map = {
         "Loamy": 6.5,
         "Sandy": 5.5,
@@ -61,7 +74,7 @@ def get_crop(data):
             }
         )
 
-    # 📊 ML INPUT
+    # ML INPUT
     ml_input = {
         "N": data.get("N", 90),
         "P": data.get("P", 40),
@@ -83,7 +96,7 @@ def get_crop(data):
         }
     )
 
-    # 🤖 PREDICT
+    # PREDICT CROPS FROM ML MODEL
     result = predict_crop(ml_input)
 
     if not isinstance(result, list):
@@ -100,36 +113,90 @@ def get_crop(data):
             "message": result
         }
 
-    # 🔥 FILTER & RERANK RECOMMENDATIONS based on suitable crops
+    # STRICT REGIONAL CROP FILTERING - CORE FIX
+    # Coffee is ONLY in South region, never in other regions
+    from models.npk_region_model import get_nearest_location, NPK_RECOMMENDATIONS
+    
+    region_info = get_nearest_location(latitude, longitude)
+    region = region_info.get("region", "North")
+    nearest_city = region_info.get("city", "Unknown")
+    
+    logger.info(
+        "Location determined for filtering",
+        extra={
+            "event": "location_determined",
+            "nearest_city": nearest_city,
+            "region": region,
+            "latitude": latitude,
+            "longitude": longitude,
+            "user_provided_location": city
+        }
+    )
+    
+    # Get approved crops for this region only
+    available_crops_in_region = list(NPK_RECOMMENDATIONS.get(region, {}).keys())
+    
+    logger.info(
+        "Regional filtering applied",
+        extra={
+            "event": "regional_filter",
+            "region": region,
+            "available_crops": available_crops_in_region,
+            "requested_location": city
+        }
+    )
+    
+    # STRICT FILTERING: Keep ONLY crops allowed in this region
+    filtered_result = []
+    for item in result:
+        crop_name = item["crop"].lower()
+        if crop_name in available_crops_in_region:
+            filtered_result.append(item)
+    
+    # If no crops from ML passed filter, use region's approved crops
+    if not filtered_result:
+        logger.warning(
+            "No ML crops matched region database - using region-approved crops",
+            extra={
+                "event": "using_region_crops_only",
+                "region": region,
+                "available_crops": available_crops_in_region,
+                "ml_predictions": [x["crop"] for x in result[:3]]
+            }
+        )
+        # Use region's approved crops (NOT ML predictions)
+        for crop in list(available_crops_in_region)[:3]:
+            filtered_result.append({"crop": crop, "confidence": 0.5})
+    else:
+        # Sort by confidence and keep top 3
+        filtered_result = sorted(filtered_result, key=lambda x: x["confidence"], reverse=True)[:3]
+    
+    result = filtered_result
+
+    # RERANK based on suitable crops if available
     if suitable_crops:
-        # Boost confidence for crops that are suitable for this region
         reranked_result = []
         
         for item in result:
             crop_name = item["crop"]
             confidence = item["confidence"]
             
-            # If crop is suitable for this region, boost its confidence
             if crop_name in suitable_crops:
-                confidence = min(confidence * 1.3, 1.0)  # Boost by 30%
+                confidence = min(confidence * 1.3, 1.0)
                 reranked_result.append({
                     "crop": crop_name,
                     "confidence": round(confidence, 3),
                     "suitable_for_region": True
                 })
             else:
-                # Lower confidence for unsuitable crops
-                confidence = confidence * 0.7  # Reduce by 30%
+                confidence = confidence * 0.7
                 reranked_result.append({
                     "crop": crop_name,
                     "confidence": round(confidence, 3),
                     "suitable_for_region": False
                 })
         
-        # Re-sort by confidence
         reranked_result.sort(key=lambda x: x["confidence"], reverse=True)
-        
-        # Remove the internal flag before returning
         result = [{"crop": item["crop"], "confidence": item["confidence"]} for item in reranked_result]
         
         logger.info(
@@ -137,12 +204,12 @@ def get_crop(data):
             extra={
                 "event": "recommendations_reranked",
                 "request_id": g.get("request_id"),
-                "original_top": result[0]["crop"],
+                "top_crop": result[0]["crop"],
                 "suitable_crops": suitable_crops
             }
         )
 
-    # 💾 SAVE HISTORY (FIXED)
+    # SAVE HISTORY
     try:
         if history_collection is not None:
             history_collection.insert_one({
@@ -162,7 +229,8 @@ def get_crop(data):
                     "condition": weather.get("condition")
                 },
                 "soil_type": soil_type,
-                "suitable_crops_used": suitable_crops
+                "suitable_crops_used": suitable_crops,
+                "region": region
             })
     except Exception as e:
         logger.error(
@@ -174,15 +242,79 @@ def get_crop(data):
             }
         )
 
-    # ✅ FINAL RESPONSE
+    # FINAL RESPONSE CHECK
+    if not result or not isinstance(result, list) or len(result) == 0:
+        logger.error(
+            "No results from ML prediction",
+            extra={
+                "event": "no_results",
+                "request_id": g.get("request_id"),
+                "city": city,
+                "region": region,
+                "soil_type": soil_type
+            }
+        )
+        return {
+            "success": False,
+            "message": "Could not generate recommendations for this region."
+        }
+    
+    recommended_crop = result[0]["crop"]
+    
+    # GET FERTILIZER RECOMMENDATION
+    try:
+        fertilizer_rec = recommend_fertilizer(
+            recommended_crop,
+            latitude=latitude,
+            longitude=longitude,
+            city=city
+        )
+        logger.info(
+            "Fertilizer recommendation generated",
+            extra={
+                "event": "fertilizer_generated",
+                "crop": recommended_crop,
+                "region": fertilizer_rec.get("region")
+            }
+        )
+    except Exception as e:
+        logger.error(
+            "Fertilizer recommendation error",
+            extra={
+                "event": "fertilizer_error",
+                "request_id": g.get("request_id"),
+                "error": str(e)
+            }
+        )
+        fertilizer_rec = {
+            "crop": recommended_crop,
+            "fertilizer_type": "General NPK",
+            "description": "General purpose fertilizer",
+            "npk_values": {"N": 100, "P": 50, "K": 40},
+            "region": region,
+            "dosage": "100 kg/ha Nitrogen, 50 kg/ha Phosphorus, 40 kg/ha Potassium"
+        }
+    
+    logger.info(
+        "Crop recommendation completed successfully",
+        extra={
+            "event": "crop_recommendation_complete",
+            "recommended_crop": recommended_crop,
+            "region": region,
+            "top_3": [item["crop"] for item in result]
+        }
+    )
+    
     return {
         "success": True,
-        "recommended_crop": result[0]["crop"],
+        "recommended_crop": recommended_crop,
         "top_3": result,
         "weather": weather,
         "soil_info": {
             "city": city,
             "soil_type": soil_type,
+            "region": region,
             "suitable_crops": suitable_crops
-        }
+        },
+        "fertilizer": fertilizer_rec
     }
