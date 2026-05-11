@@ -2,6 +2,7 @@ from services.crop_service import predict_crop
 from services.weather_service import get_weather
 from services.soil_service import fetch_soil_data
 from services.fertilizer_service import recommend_fertilizer
+from services.location_service import find_nearest_location, match_voice_location
 from models.soil_model import get_soil_data
 import logging
 from flask import g
@@ -114,12 +115,12 @@ def get_crop(data):
         }
 
     # STRICT REGIONAL CROP FILTERING - CORE FIX
-    # Coffee is ONLY in South region, never in other regions
-    from models.npk_region_model import get_nearest_location, NPK_RECOMMENDATIONS
+    # Use location service for accurate location matching
+    from models.npk_region_model import NPK_RECOMMENDATIONS
     
-    region_info = get_nearest_location(latitude, longitude)
-    region = region_info.get("region", "North")
-    nearest_city = region_info.get("city", "Unknown")
+    location_match = find_nearest_location(latitude, longitude)
+    region = location_match.get("region", "North")
+    nearest_city = location_match.get("location", "Unknown")
     
     logger.info(
         "Location determined for filtering",
@@ -129,7 +130,8 @@ def get_crop(data):
             "region": region,
             "latitude": latitude,
             "longitude": longitude,
-            "user_provided_location": city
+            "user_provided_location": city,
+            "distance_from_location": location_match.get("distance")
         }
     )
     

@@ -1,49 +1,55 @@
-# ⚡ QUICK START GUIDE - KRISHI AI Enhanced
+# ⚡ QUICK START GUIDE - KRISHI AI Refactored
+
+## 🌾 Overview
+
+KRISHI AI is a smart crop recommendation system using ML models, voice input, location-based analysis, and dual language support.
+
+**Current Branch:** `feature/ai-upgrade`
+
+---
 
 ## 🚀 Installation & Setup
 
-### 1️⃣ **Install New Dependencies**
+### 1️⃣ **Install Dependencies**
 
 ```bash
 # Navigate to project root
 cd /Users/harshitkumar/Desktop/KRISHI/KRISHI-AI-Crop-
 
-# Upgrade pip (important!)
-pip install --upgrade pip
-
-# Install dependencies
+# Install all requirements
 pip install -r requirements.txt
 ```
 
-**New packages added:**
-- `streamlit-folium` - Interactive maps in Streamlit
-- `folium` - Map library
-- `geopy` - Geocoding (city name from coordinates)
-- `babel` - Language/locale support
+**Key packages:**
+- `Flask` - Backend API
+- `Streamlit` - Frontend UI
+- `joblib` - ML model loading
+- `streamlit-folium` - Interactive maps
+- `speech_recognition` - Voice input
+- `gtts` - Text-to-speech
+- `pymongo` - Database
 
 ---
 
-### 2️⃣ **Start Backend Server**
+## 2️⃣ **Start Backend Server**
 
 ```bash
 # Terminal 1 - Backend
 cd backend
-
-# Activate virtual environment
-source ../venv/bin/activate
 
 # Run Flask server
 python main.py
 
 # Expected output:
 # * Running on http://127.0.0.1:5001
+# * ML Model Loaded Successfully
 ```
 
-**Important:** Make sure MongoDB is running!
+**Ensure MongoDB is running!**
 
 ---
 
-### 3️⃣ **Start Frontend Application**
+## 3️⃣ **Start Frontend Application**
 
 ```bash
 # Terminal 2 - Frontend
@@ -54,7 +60,7 @@ streamlit run app.py
 
 # Expected output:
 # You can now view your Streamlit app in your browser.
-# Local URL: http://localhost:8501
+# Local URL: http://localhost:8502
 ```
 
 ---
@@ -62,41 +68,107 @@ streamlit run app.py
 ## 🎮 **Using the Application**
 
 ### First Time Setup:
-1. **Signup**: Create a new account with username & password
-2. **Login**: Enter your credentials
-3. **Set Language**: Use sidebar to select English or हिंदी
-4. **Welcome!** You're ready to get recommendations
+1. **Sign Up**: Create account (username + password)
+2. **Log In**: Enter credentials
+3. **Select Language**: English or हिंदी (sidebar)
+4. **Ready!** Start getting recommendations
 
-### Getting Crop Recommendations:
+---
 
+## 📍 **Two Input Methods:**
+
+### **METHOD 1: Map-Based Location**
 ```
-📍 Step 1: Select Location
-   └─ Click on the interactive map
-   └─ System extracts: latitude, longitude, city name
+✅ Best for: Visual selection
+   1. Select "Map-Based Location" from radio button
+   2. Click on map to select your region
+   3. System finds nearest matched location
+   4. Fill crop analysis form
+   5. Click "Get Recommendation"
+   6. Best crop is spoken aloud with location name
+```
 
-🌱 Step 2: Choose Soil Type
-   └─ Options: Loamy, Sandy, Clay, Silty, Peaty
-   └─ NPK values auto-populate based on region
-
-🎤 Step 3: (Optional) Use Voice Input
-   └─ Click "🎤 Voice Input" button
-   └─ Speak your input
-   └─ Recommendation triggers automatically!
-
-   OR
-
-   🚀 Step 3: Get Recommendation Manually
-   └─ Adjust N, P, K if needed (optional)
-   └─ Click "🚀 Get Recommendation" button
-
-✅ Step 4: View Results
-   └─ Best crop recommendation
-   └─ Top 3 alternatives
-   └─ Region-specific NPK values
-   └─ Fertilizer recommendations
+### **METHOD 2: Voice-Based Location**
+```
+🎤 Best for: Farmers unfamiliar with maps
+   1. Select "Voice-Based Location" from radio button
+   2. Click "Listen for Voice" button
+   3. Say your location: "Delhi", "Meerut", "Punjab", etc.
+   4. System matches to closest location
+   5. Fill crop analysis form
+   6. Click "Get Recommendation"
+   7. Best crop is spoken for that XYZ location
 ```
 
 ---
+
+## 📊 **Features:**
+
+### Backend Features:
+- ✅ ML model (crop_model.pkl) active
+- ✅ Location service with detailed database
+- ✅ Voice controller for voice input handling
+- ✅ Synchronous voice processing
+- ✅ Both languages support (EN/HI)
+- ✅ Region-based crop filtering
+- ✅ Fertilizer recommendations
+
+### Frontend Features:
+- ✅ Earthy color scheme (browns, muted greens)
+- ✅ Simple, clean interface
+- ✅ Separated map and voice flows
+- ✅ Interactive folium maps
+- ✅ Top 3 crop recommendations
+- ✅ Yield comparison charts
+- ✅ Weather display
+- ✅ Recent history dashboard
+- ✅ Both languages (EN/हिंदी)
+
+---
+
+## 🔧 **Key Controllers:**
+
+1. **crop_controller.py** - Main recommendation logic
+2. **voice_controller.py** - Voice input handling (NEW)
+3. **location_service.py** - Location database & matching (NEW)
+4. **crop_service.py** - ML model predictions
+5. **fertilizer_service.py** - Fertilizer recommendations
+
+---
+
+## 📱 **Location Database:**
+
+Available locations for voice/map input:
+- Delhi, Meerut, Punjab, Haryana, Uttar Pradesh
+- Bihar, West Bengal, Jharkhand, Maharashtra
+- Madhya Pradesh, Karnataka, Tamil Nadu
+- Telangana, Andhra Pradesh
+
+---
+
+## 🐛 **Troubleshooting:**
+
+| Issue | Solution |
+|-------|----------|
+| Port 5001 in use | Kill process: `lsof -ti:5001 \| xargs kill -9` |
+| No microphone found | Ensure mic is connected, allow permissions |
+| Voice not heard | Check language setting, speaker volume |
+| Location not matched | Use major city names (Delhi, Meerut, etc.) |
+| Model not loading | Verify `backend/models/crop_model.pkl` exists |
+| Database connection error | Ensure MongoDB is running |
+
+---
+
+## 📞 **Support:**
+
+For issues with:
+- **Backend**: Check logs in `backend/logging_config.py`
+- **Frontend**: Check browser console & Streamlit terminal
+- **Voice**: Enable microphone permissions in system settings
+
+---
+
+
 
 ## 🌐 **Features Overview**
 
