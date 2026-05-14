@@ -36,8 +36,26 @@ def get_crop(data):
         }
     )
 
-    # GET WEATHER
-    weather = get_weather(city)
+    # FIRST: Find the nearest location based on coordinates (to get mapped location)
+    location_match = find_nearest_location(latitude, longitude)
+    region = location_match.get("region", "North")
+    nearest_city = location_match.get("location", "Unknown")
+    
+    logger.info(
+        "Location determined for filtering",
+        extra={
+            "event": "location_determined",
+            "nearest_city": nearest_city,
+            "region": region,
+            "latitude": latitude,
+            "longitude": longitude,
+            "user_provided_location": city,
+            "distance_from_location": location_match.get("distance")
+        }
+    )
+
+    # GET WEATHER using the MAPPED location (nearest in database), not user input
+    weather = get_weather(nearest_city)
 
     if not weather.get("success"):
         logger.error(
@@ -117,23 +135,6 @@ def get_crop(data):
     # STRICT REGIONAL CROP FILTERING - CORE FIX
     # Use location service for accurate location matching
     from models.npk_region_model import NPK_RECOMMENDATIONS
-    
-    location_match = find_nearest_location(latitude, longitude)
-    region = location_match.get("region", "North")
-    nearest_city = location_match.get("location", "Unknown")
-    
-    logger.info(
-        "Location determined for filtering",
-        extra={
-            "event": "location_determined",
-            "nearest_city": nearest_city,
-            "region": region,
-            "latitude": latitude,
-            "longitude": longitude,
-            "user_provided_location": city,
-            "distance_from_location": location_match.get("distance")
-        }
-    )
     
     # Get approved crops for this region only
     available_crops_in_region = list(NPK_RECOMMENDATIONS.get(region, {}).keys())
@@ -318,5 +319,8 @@ def get_crop(data):
             "region": region,
             "suitable_crops": suitable_crops
         },
-        "fertilizer": fertilizer_rec
+        "fertilizer": fertilizer_rec,
+        "mapped_location": nearest_city,
+        "user_selected_location": city,
+        "region": region
     }

@@ -7,7 +7,7 @@ load_dotenv()
 API_KEY = os.getenv("WEATHER_API_KEY")
 
 def get_weather(city):
-    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid=337d8ffa338706cc848afb2c7a886d5e&units=metric"
     
     res = requests.get(url)
     data = res.json()

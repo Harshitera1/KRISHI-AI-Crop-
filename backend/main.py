@@ -3,6 +3,7 @@ import time
 import uuid
 
 from flask import Flask, g, request, jsonify
+from flask_cors import CORS
 from logging_config import configure_logging
 
 from routes.user_routes import user_bp
@@ -24,6 +25,9 @@ logger = logging.getLogger(__name__)
 
 # ✅ Create app FIRST
 app = Flask(__name__)
+
+# 🔥 Enable CORS
+CORS(app, resources={r"/api/*": {"origins": "*", "methods": ["GET", "POST", "PUT", "DELETE"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 # 🔥 Init bcrypt AFTER app
 bcrypt.init_app(app)
