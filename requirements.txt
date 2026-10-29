@@ -20,3 +20,8 @@ python-dotenv
 requests
 babel
 plotly
+faiss-cpu
+sentence-transformers
+langgraph
+langchain-groq
+fpdf2

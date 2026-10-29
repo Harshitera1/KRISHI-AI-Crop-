@@ -7,6 +7,7 @@ import folium
 from streamlit_folium import st_folium
 import time
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 import math
 
@@ -17,112 +18,136 @@ import math
 st.set_page_config(page_title="KRISHI AI", layout="wide", initial_sidebar_state="expanded")
 
 # ============================================================================
-# BRIGHT & SIMPLE STYLING (NO DARK COLORS)
+# PREMIUM DARK DASHBOARD STYLING
 # ============================================================================
 st.markdown("""
 <style>
-    /* Main background - Bright cream */
+    :root {
+        --bg: #0d1117;
+        --surface: #161b22;
+        --surface-raised: #1e252e;
+        --border: #303943;
+        --text: #f0f3f6;
+        --muted: #aab4bf;
+        --green: #39d353;
+        --green-dark: #238636;
+        --gold: #e3b341;
+        --danger: #ff7b72;
+        --info: #79c0ff;
+    }
+
+    /* App shell */
     .stApp {
-        background-color: #ffffff !important;
+        background: var(--bg) !important;
+        color: var(--text) !important;
     }
-    
-    /* Main container */
     .main {
-        background-color: #ffffff !important;
+        background: var(--bg) !important;
     }
-    
-    /* Input fields - White with green border */
+
+    [data-testid="stHeader"] {
+        background: var(--bg) !important;
+    }
+
+    /* Typography */
+    h1, h2 { color: var(--green) !important; }
+    h3, h4, p, span, li, label { color: var(--text) !important; }
+    small, [data-testid="stCaptionContainer"] { color: var(--muted) !important; }
+
+    /* Inputs */
     .stTextInput > div > div > input,
     .stNumberInput > div > div > input,
-    .stSelectbox > div > div > input {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 2px solid #27ae60 !important;
+    .stTextArea textarea,
+    .stSelectbox [data-baseweb="select"] > div {
+        background: var(--surface) !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 6px !important;
         padding: 12px !important;
         font-size: 15px !important;
     }
-    
-    /* Input labels - Dark text */
-    label {
-        color: #000000 !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
+
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--muted) !important;
     }
-    
-    /* Buttons - Green */
+
+    [data-baseweb="popover"],
+    [data-baseweb="menu"],
+    [role="listbox"] {
+        background: var(--surface-raised) !important;
+        color: var(--text) !important;
+    }
+
+    /* Actions */
     .stButton > button {
-        background-color: #27ae60 !important;
-        color: white !important;
-        border: none !important;
+        background: var(--green-dark) !important;
+        color: #ffffff !important;
+        border: 1px solid var(--green) !important;
         padding: 12px 24px !important;
         font-weight: 600 !important;
         border-radius: 6px !important;
         width: 100% !important;
+        transition: background 160ms ease, border-color 160ms ease !important;
     }
-    
     .stButton > button:hover {
-        background-color: #229954 !important;
+        background: #2ea043 !important;
+        border-color: var(--gold) !important;
     }
-    
-    /* Titles */
-    h1 { color: #27ae60 !important; }
-    h2 { color: #27ae60 !important; }
-    h3 { color: #000000 !important; }
-    
-    /* Text - Black */
-    p { color: #000000 !important; }
-    
-    /* Cards/boxes */
+
+    /* Result cards */
     .card {
-        background-color: #f0f8f0 !important;
-        border: 2px solid #27ae60 !important;
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
         border-radius: 8px !important;
         padding: 20px !important;
         margin: 15px 0 !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
     }
-    
-    /* Success messages */
-    .stSuccess {
-        background-color: #d4edda !important;
-        border: 1px solid #28a745 !important;
+
+    /* Alerts */
+    [data-testid="stAlert"] {
+        background: var(--surface) !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border) !important;
         border-radius: 6px !important;
     }
-    
-    /* Error messages */
-    .stError {
-        background-color: #f8d7da !important;
-        border: 1px solid #f5c6cb !important;
-        border-radius: 6px !important;
-    }
-    
-    /* Info messages */
-    .stInfo {
-        background-color: #d1ecf1 !important;
-        border: 1px solid #0c5460 !important;
-        border-radius: 6px !important;
-    }
-    
-    /* Warning messages */
-    .stWarning {
-        background-color: #fff3cd !important;
-        border: 1px solid #ffc107 !important;
-        border-radius: 6px !important;
-    }
-    
+    .stSuccess { border-left: 4px solid var(--green) !important; }
+    .stWarning { border-left: 4px solid var(--gold) !important; }
+    .stError { border-left: 4px solid var(--danger) !important; }
+    .stInfo { border-left: 4px solid var(--info) !important; }
+
     /* Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #f8f9fa !important;
+        background: #11161d !important;
+        border-right: 1px solid var(--border) !important;
     }
-    
-    /* Dataframes */
-    .stDataFrame {
-        background-color: #ffffff !important;
-    }
-    
-    /* Metrics */
-    .stMetric {
-        background-color: #f0f8f0 !important;
+
+    /* Metrics and tables */
+    [data-testid="stMetric"] {
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
         border-radius: 8px !important;
+        padding: 12px !important;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2) !important;
+    }
+    [data-testid="stMetricValue"] { color: var(--green) !important; }
+    [data-testid="stMetricLabel"] { color: var(--muted) !important; }
+    [data-testid="stDataFrame"] {
+        background: var(--surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+    }
+
+    /* Map and embedded visual surfaces */
+    iframe {
+        border: 1px solid var(--border) !important;
+        border-radius: 8px !important;
+        background: var(--surface) !important;
+    }
+
+    hr {
+        border-color: var(--border) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -603,10 +628,25 @@ else:
                 city = st.session_state.selected_location
                 coords = LOCATIONS.get(city, LOCATIONS["delhi"])
                 
+                request_payload = {
+                    "location": city.title(),
+                    "latitude": coords["lat"],
+                    "longitude": coords["lng"],
+                    "soil": soil,
+                    "N": N,
+                    "P": P,
+                    "K": K,
+                    "ph": ph,
+                    "temperature": weather.get("temperature", 25),
+                    "humidity": weather.get("humidity", 50),
+                    "rainfall": 100,
+                }
+                request_headers = {"Authorization": f"Bearer {st.session_state.token}"}
                 res = requests.post(
-                    "http://127.0.0.1:5001/api/crop/recommend",
-                    headers={"Authorization": f"Bearer {st.session_state.token}"},
-                    json={"location": city.title(), "latitude": coords["lat"], "longitude": coords["lng"], "soil": soil, "N": N, "P": P, "K": K, "ph": ph, "temperature": weather.get("temperature", 25), "humidity": weather.get("humidity", 50), "rainfall": 100}
+                    "http://127.0.0.1:5001/api/crop/advisory",
+                    headers=request_headers,
+                    json=request_payload,
+                    timeout=120,
                 )
                 
                 data = res.json()
@@ -647,8 +687,10 @@ else:
                     # Clear voice input text for next recommendation
                     st.session_state.voice_input_text = None
                     
-                    # ========== DISPLAY CARD ==========
-                    # Show what user selected, but note if it's mapped
+                    # ========== RESULT CARDS ==========
+                    risk_level = data.get("risk_level", "low")
+                    risk_score = {"low": 25, "moderate": 60, "high": 90}.get(risk_level, 60)
+                    risk_color = {"low": "#39d353", "moderate": "#e3b341", "high": "#ff7b72"}.get(risk_level, "#e3b341")
                     is_location_mapped = backend_mapped_location.lower() == user_selected_location.lower()
                     
                     if is_location_mapped:
@@ -656,16 +698,83 @@ else:
                     else:
                         location_note = f"<p style='text-align: center; font-size: 13px; color: #666;'><strong>📍 Searching... Mapped to: {backend_mapped_location.title()}</strong></p>"
                     
-                    st.markdown(f"""
-                    <div class='card'>
-                    <h2 style='text-align: center;'>{t('best_crop')}</h2>
-                    <h1 style='text-align: center; color: #27ae60;'>{best_crop.upper()}</h1>
-                    <p style='text-align: center; font-size: 18px;'>{best_crop_hi}</p>
-                    <p style='text-align: center; font-size: 16px; color: #229954;'><strong>📍 {user_selected_location.title()}</strong></p>
-                    {location_note}
-                    <p style='text-align: center; font-size: 15px; color: #27ae60;'><strong>💰 Est. Profit: ₹{profit:,}/ha</strong></p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    card_col1, card_col2, card_col3 = st.columns(3)
+                    with card_col1:
+                        st.markdown(f"""
+                        <div class='card'>
+                        <p style='color: #aab4bf !important; margin-bottom: 6px;'>🌾 Recommended Crop</p>
+                        <h2 style='color: #39d353 !important; margin: 0;'>{best_crop.upper()}</h2>
+                        <p>{best_crop_hi} · {user_selected_location.title()}</p>
+                        {location_note}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with card_col2:
+                        confidence = data.get("top_3", [{}])[0].get("confidence", 0)
+                        st.markdown(f"""
+                        <div class='card'>
+                        <p style='color: #aab4bf !important; margin-bottom: 6px;'>📈 Confidence</p>
+                        <h2 style='color: #e3b341 !important; margin: 0;'>{confidence:.1%}</h2>
+                        <p>Estimated model confidence</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with card_col3:
+                        st.markdown(f"""
+                        <div class='card'>
+                        <p style='color: #aab4bf !important; margin-bottom: 6px;'>⚠️ Risk Level</p>
+                        <h2 style='color: {risk_color} !important; margin: 0;'>{risk_level.title()}</h2>
+                        <p>{len(data.get('risk_flags', []))} flagged condition(s)</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    st.markdown("### Risk Overview")
+                    risk_gauge = go.Figure(go.Indicator(
+                        mode="gauge+number",
+                        value=risk_score,
+                        number={"suffix": "/100", "font": {"color": "#f0f3f6"}},
+                        title={"text": f"{risk_level.title()} risk", "font": {"color": risk_color}},
+                        gauge={
+                            "axis": {"range": [0, 100], "tickcolor": "#aab4bf"},
+                            "bar": {"color": risk_color},
+                            "bgcolor": "#161b22",
+                            "bordercolor": "#303943",
+                            "steps": [
+                                {"range": [0, 40], "color": "#193b25"},
+                                {"range": [40, 70], "color": "#4a3b16"},
+                                {"range": [70, 100], "color": "#4a2020"},
+                            ],
+                        },
+                    ))
+                    risk_gauge.update_layout(
+                        height=260,
+                        margin={"t": 45, "b": 10, "l": 30, "r": 30},
+                        paper_bgcolor="#161b22",
+                        font={"color": "#f0f3f6"},
+                    )
+                    st.plotly_chart(risk_gauge, use_container_width=True)
+
+                    if data.get("risk_flags"):
+                        st.warning("Risk checks: " + "; ".join(data["risk_flags"]))
+
+                    if data.get("advisory_text"):
+                        st.markdown("### 🌱 Advisory")
+                        st.markdown(f"<div class='card'>{data['advisory_text']}</div>", unsafe_allow_html=True)
+
+                    pdf_response = requests.post(
+                        "http://127.0.0.1:5001/api/crop/advisory/pdf",
+                        headers=request_headers,
+                        json=request_payload,
+                        timeout=120,
+                    )
+                    if pdf_response.ok:
+                        st.download_button(
+                            "Download PDF Advisory",
+                            data=pdf_response.content,
+                            file_name="krishi_advisory.pdf",
+                            mime="application/pdf",
+                            use_container_width=True,
+                        )
+                    else:
+                        st.warning("PDF report could not be generated right now.")
                     
                     # Top 3 crops
                     st.markdown(f"## {t('top_crops')}")
@@ -686,7 +795,7 @@ else:
                         chart_data.append({"Crop": crop_item["crop"].title(), "Yield": YIELDS.get(crop_item["crop"].lower(), 3.5)})
                     
                     fig = px.bar(pd.DataFrame(chart_data), x="Crop", y="Yield", color_discrete_sequence=["#27ae60"], text_auto=True)
-                    fig.update_layout(showlegend=False, hovermode=False, plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", font=dict(color="#000000"))
+                    fig.update_layout(showlegend=False, hovermode=False, plot_bgcolor="#161b22", paper_bgcolor="#0d1117", font=dict(color="#f0f3f6"))
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Fertilizer with voice explanation
